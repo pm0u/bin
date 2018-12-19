@@ -1,0 +1,3 @@
+source ~/bin/cli-mountains-env
+
+node ~/Projects/cli-mountains/test.js
