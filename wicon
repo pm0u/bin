@@ -1,0 +1,35 @@
+#! /bin/bash
+YES="n"
+
+while [ "$YES" == "n" ];
+do
+    #clear
+    #scan and display wifi networks, store in variable
+    WIFIS=$(nmcli -c yes --fields BARS,SIGNAL,SSID,CHAN,RATE,SECURITY dev wifi | awk '{ if (NR>1 && NR<11) print NR-1 FS,$0; else if (NR>=11) print NR-1,$0; else print FS FS FS $0 }')
+
+    echo -e "$WIFIS"
+
+    #ask which wifi to connect to
+    echo
+    read -p "Enter a # to connect to... " WIFINUM
+    ELWIFI=$(echo -e "$WIFIS" | awk -v i=$WIFINUM 'NR==i+1 { print }')
+    echo -e "$ELWIFI"
+    YES="y"
+    read -p "Confirm (Y/n).. " YES
+done
+
+SSID=$(echo "$ELWIFI" | awk '{ print $4 }' | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+SEC=$(echo "$ELWIFI" | awk '{ print $8 }' | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
+
+#if has security, then ask password
+if [[ -n $SEC ]]
+then
+    #echo "needs password"
+    read -p "Enter WPA Password.. " PASSWD
+    nmcli dev wifi con \'"$SSID"\' password \'"$PASSWD"\' name \'"$SSID"\'
+else
+    #echo "no password"
+    nmcli dev wifi con "$SSID" name "$SSID"
+fi
+
+

@@ -1,0 +1,35 @@
+#! /bin/bash
+
+bold='\033[01m' #bold
+NC='\033[0m' # no color
+
+echo -e "${bold}Powering on bluetooth device..${NC}"
+echo -e "power on" | bluetoothctl
+
+echo -e "${bold}Connecting to bluetooth device...${NC}"
+
+case $1 in
+    "home")
+        SINK="C8:84:47:1E:6D:F9"
+        echo -e "connect $SINK" | bluetoothctl
+        ;;
+    *)
+        echo -e "${bold}Switching back to default output...${NC}"
+        echo -e "${bold}Powering off bluetooth...${NC}"
+        echo -e "power off" | bluetoothctl
+        movesinks 0
+        echo -e "${bold}Done.${NC}"
+        exit 0
+        ;;
+esac
+
+echo -e "${bold}Waiting to connect...${NC}"
+
+sleep 5
+
+echo -e "${bold}Moving sinks...${NC}"
+SINK=$(echo $SINK | sed 's/:/_/g')
+
+movesinks $(echo -e "list-sinks" | pacmd | grep index | awk -F: 'NR==2 {print $2}' | sed 's/ //g')
+
+echo  -e "${bold}Done.${NC}"

@@ -1,0 +1,13 @@
+#! /bin/sh
+echo 'Before..'
+sudo sed -n '/.*linux.*root.*/p' /boot/grub/grub.cfg
+echo 'Proceed? (Y/n)' 
+read PROCEED
+if [ "$PROCEED" != "n" ] && [ "$PROCEED" != "N" ]; then
+    sudo sed -i 's/\(.*linux.*4\) \(root=.*\)/\1 cryptdevice=UUID=afc2bfb7-6399-4268-8eaf-9fba535f2f40:bitchin \2/g' /boot/grub/grub.cfg
+    echo 'After..'
+    sudo sed -n '/.*linux.*root.*/p' /boot/grub/grub.cfg
+else
+    echo 'No modifications made..'
+    exit 1
+fi

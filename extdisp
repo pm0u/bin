@@ -1,0 +1,66 @@
+#! /bin/bash
+
+if [ $# -gt 0 ]; then
+    while [ $# -gt 0 ]; do
+	case $1 in
+	    -d|-disp|-display)
+		DISP="$2"
+		;;
+	    -res|--resolution)	
+		RESOLUTION="--mode $2"
+		shift
+		;;
+	    -r|-right)
+		DIRECTION="--right-of"
+		shift
+		;;
+	    -l|-left)
+		DIRECTION="--left-of"
+		shift
+		;;
+	    -b|-below)
+		DIRECTION="--below"
+		shift
+		;;
+	    -a|-above)
+		DIRECTION="--above"
+		shift
+		;;
+	    -s|-same)
+		DIRECTION="--same-as"
+		shift
+		;;
+	    -o| -off)
+		OFF=1
+		shift
+		;;
+	esac
+	shift
+    done
+    
+    if [ -z "$DISP" ]; then
+		DISP=$(xrandr | grep connected | grep -v primary | grep -v disconnected | awk '{print $1}')
+    fi
+
+    if [ -z "$RESOLUTION" ]; then
+	RESOLUTION="--auto"
+    fi
+
+    if [ -z "$DIRECTION" ]; then
+	DIRECTION="--right-of"
+    fi
+
+    if [ -z "$OFF" ]; then
+	xrandr --output eDP-1 --auto --output $DISP $RESOLUTION $DIRECTION eDP-1
+    else
+	xrandr --output $DISP --off
+    fi
+
+else
+    echo ""
+    echo -e "\e[36mUSAGE\t\t\e[39mextdisp \e[31m-d \e[32m[DISPLAYNAME] \e[31m-res \e[32m[RESOLUTION] \e[31m[-r|-l|-a|-b|-s]\e[39m"
+    echo -e "\e[36mDEFAULTS\t\e[39mextdisp \e[31m-d \e[32mHDMI2 \e[31m-res \e[32mAUTO \e[31m[-r(ight)|-l(eft)|-a(bove)|-b(elow)|-s(ame)]\e[39m"
+    echo ""
+    echo -e "\t\t\e[91m**you must set a direction or else you will get this help screen**\e[39m"
+    echo ""
+fi

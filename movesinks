@@ -1,0 +1,17 @@
+#! /bin/bash
+if [ -z ${1+x} ]; then
+    pactl list sinks | grep 'Sink\|Description'
+    echo -e 'Choose a sink to switch to (#/N)...'
+    read SINK
+else
+    SINK=$1
+fi
+
+if  [[ "${SINK} =~ +[0-9]" ]]; then
+    #echo "moving to $SINK.."
+    pactl list sink-inputs | sed -n 's/Sink.*#\([0-9]*\)/\1/gp' | xargs -n1 -IINPUT pactl move-sink-input INPUT $SINK
+else
+    echo 'Nothing to do...'
+fi
+
+

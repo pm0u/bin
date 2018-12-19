@@ -1,0 +1,10 @@
+#! /bin/bash
+
+#remove last line of history file 
+
+#cat /home/$(whoami)/.histfile | head -n -1 >> /home/$(whoami)/.histfile
+
+
+# better solution - search all lines starting with ^@ and delete
+
+cat /home/$(whoami)/.histfile | grep -v '^\^\@' >> /home/$(whoami)/.histfile

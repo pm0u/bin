@@ -1,0 +1,40 @@
+#! /bin/sh
+case $1 in 
+    -s)
+	#stop vpn
+	sudo systemctl stop openvpn-client@*.service
+	exit 1
+    ;;
+    *)
+	#either server input directly or menu, first make list of servers
+	VPNDIR='/etc/openvpn/client/'
+	USSERVERS=$(sudo ls $VPNDIR | grep US)
+	SERVERNUM=1
+	sudo systemctl stop openvpn-client@*.service
+	case $1 in
+	    US-*|us-*)
+		#set server name from input & capitalize properly
+		SERVERCONF=$(echo $1 | sed -e 's/\([a-Z]\)\([a-Z]\)-\([a-Z]*\)/\u\1\u\2-\u\3/g')
+		#echo $SERVERCONF
+		;;
+	    *)
+		#ping servers & offer menu
+		#echo $USSERVERS
+		while read -r LINE; do
+		    SERVER=$(sudo cat $VPNDIR$LINE | grep 'remote' -m 1 | awk '{print $2}')
+		    PINGER=$(ping -c 3 $SERVER | tail -1 | awk -F '/' '{print $5}')
+		    echo -e $SERVERNUM $(echo $LINE | cut -f 1 -d '.')\\t\\t$PINGER
+		    #echo $SERVER
+		    SERVERNUM=$(($SERVERNUM+1))
+		done <<< "$USSERVERS"
+		echo 'Choose a server... (#)'
+		read SERVERCHOICE 
+		SERVERCONF=$(sed -n ${SERVERCHOICE}p <<< "$USSERVERS")
+		;;
+	esac
+	;;
+esac
+
+#connect to determined server
+echo "Launching openvpn connection using $SERVERCONF..."
+sudo systemctl start openvpn-client@$(echo $SERVERCONF | cut -f 1 -d '.').service

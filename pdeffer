@@ -1,0 +1,196 @@
+#! /bin/bash
+# pdf scanning script
+# 1/13/2015
+
+bold='\033[01m' #bold
+red='\033[01;31m' #error color 
+NC='\033[0m' # No Color
+
+if [ $# == 0 ]; then
+    #tell em whats up
+    echo -e "pdeffer ${bold}[ -q ] [ -i | -I${NC} input_location${bold} ] [ -o | -O${NC} output_location${bold} ] [ -f${NC} filename ${bold} ] [ -t ${NC}datestring ${bold}| -T ] [ -N ] [ -u | -U ]${NC}"
+    echo -e "${bold} -d${NC}\tdefault"
+    echo -e "${bold} -q${NC}\treally quiet. no terminal output at all."
+    echo -e "${bold} -i${NC}\tspecify #, defaults to /run/media/${USER}/AV_SCAN/200DOC"
+    echo -e "${bold} -I${NC}\tspecify an explicit input path"
+    echo -e "${bold} -o${NC}\tspecify Dropbox directory, defaults to ~/Dropbox/UNSORTED"
+    echo -e "${bold} -O${NC}\tspecify an explicit output path"
+    echo -e "${bold} -f${NC}\tspecify string to append to files (after datestamp)"
+    echo -e "${bold} -t${NC}\tspecify date string format (see ${bold}man date${NC}) be cautious of special characters. defaults to ${bold}%Y-%m-%d_%H.%M.%S${NC}"
+    echo -e "${bold} -T${NC}\tno date stamping"
+    echo -e "${bold} -N${NC}\tno processing (pdfsandwich). move and apply name if applicable"
+    echo -e "${bold} -u${NC}\tunite all pdfs in input directory before processing. defaults to no datestamp. uses ${bold}pdfunite${NC}"
+    echo -e "${bold} -U\t-u ${NC}with a date stamp."
+    echo -e "${bold} -g${NC}\tgrayscale input. Will lower white threshold, typically reduces OCR readability."
+
+else
+    #make it happen
+    while getopts "i:I:o:O:f:t:TvdqNuUg" OPTNAME
+    do
+        case "$OPTNAME" in
+            "i")
+                INPUT="/run/media/AV_SCAN-$OPTARG/DCIM/200DOC"
+                ;;
+            "I")
+                INPUT="$OPTARG"
+                EXPLICIT=1
+                ;;
+            "o")
+                OUTPUT="$HOME/Dropbox/$OPTARG/"
+                ;;
+            "O")
+                OUTPUT="$OPTARG"
+                ;;
+            "f")
+                #echo "filename is ${OPTARG}"
+                FILENAME="${OPTARG}.PDF"
+                ;;
+            "t")
+                DATESTRING="$OPTARG"
+                ;;
+            "T")
+                NODATE=1
+                ;;
+            "q")
+                QUIET=1
+                ;;
+            "N")
+                NOPROC=1
+                ;;
+            "u")
+                UNITE=1
+                NODATE=1
+                ;;
+            "U")
+                UNITE=1
+                ;;
+            "g")
+                GRAYSC=1
+                ;;
+            "d")
+                ;;
+        esac
+    done
+
+    #set defaults
+    ############
+    if [ -z $INPUT ]; then INPUT="/run/media/AV_SCAN/DCIM/200DOC"; fi
+    if [ -z $OUTPUT ]; then OUTPUT="$HOME/Dropbox/UNSORTED/"; fi
+    if [ -z $DATESTRING ]; then DATESTRING="%Y-%m-%d_%H.%M.%S"; fi
+    if [ -z $GRAYSC ]; then 
+        WHITETHRESH=10
+        BLACKTHRESH=60
+    else 
+        WHITETHRESH=30
+        BLACKTHRESH=75 
+    fi
+
+
+    ############
+
+    FILEES=$(find "$INPUT" -maxdepth 1 -iname '*.pdf' -printf '%f\n' | sort)
+    if [ ! -z $UNITE ]; then 
+        if [ -z $QUIET ]; then
+            UNITECOUNT=0
+            for z in $FILEES; do let "UNITECOUNT += 1"; done
+            echo -e "${bold}>>>>>Uniting $UNITECOUNT pdfs...${NC}"
+        fi
+            PDFUNITEFILES=$(find "$INPUT" -maxdepth 1 -iname '*.PDF' -print0 | sort | sed -e 's/\x0/ /g')
+            if [ "$QUIET" = 1 ]; then
+                pdfunite ${PDFUNITEFILES} "$INPUT/UNITED.PDF" &> /dev/null
+            else
+                pdfunite ${PDFUNITEFILES} "$INPUT/UNITED.PDF"
+            fi
+            ORIGFILES=$FILEES
+            FILEES="UNITED.PDF"
+    fi
+
+    if [ -z $QUIET ]; then echo -e "${bold}>>>>>Copying pdfs to ~/pdfs..${NC}"; fi
+
+    for z in $FILEES
+    do
+        if [ -z $FILENAME ]; then FILENAME="$z"; fi
+        if [ -z $NODATE ]; then
+            TIMESTAMP="$(stat ${INPUT}/${z} --printf %y | sed 's/\([0-9]*-[0-9]*-[0-9]*\) \([0-9]*\):\([0-9]*\):\([0-9]*\).*/\1_\2.\3.\4/')_"
+        else
+            TIMESTAMP=""
+        fi
+        ORIGINALNAME="$z"
+        if [ "$QUIET" = 1 ] && [ "$EXPLICIT" = 1 ]; then
+            cp --preserve=timestamps "${INPUT}"  "$HOME/pdfs/${TIMESTAMP}${FILENAME}" &> /dev/null
+        elif [ -z "$QUIET" ] && [ "$EXPLICIT" = 1 ]; then
+            cp -v --preserve=timestamps "${INPUT}" "$HOME/pdfs/${TIMESTAMP}${FILENAME}"
+        elif [ "$QUIET" = 1 ]; then
+            cp --preserve=timestamps "${INPUT}/${ORIGINALNAME}" "$HOME/pdfs/${TIMESTAMP}${FILENAME}" &> /dev/null
+        else
+            cp -v --preserve=timestamps "${INPUT}/${ORIGINALNAME}" "$HOME/pdfs/${TIMESTAMP}${FILENAME}"
+        fi
+    done
+
+    if [ -z $NOPROC ]; then
+
+        if [ -z $QUIET ]; then echo -e "${bold}>>>>>pdfsandwiching them..${NC}"; fi
+
+        FILES=$(find "$HOME"/pdfs -maxdepth 1 -iname '*.PDF' | sort)
+        PDFCOUNT=0
+        PDFTOT=0
+        for z in $FILES; do let "PDFTOT += 1"; done
+
+        for f in $FILES
+        do
+            let "PDFCOUNT += 1"
+            echo -e "${bold}>>>>>Processing $PDFCOUNT of $PDFTOT - $f${NC}"
+            if [ "$QUIET" = 1 ]; then
+                pdfsandwich -quiet -coo "-enhance -white-threshold '${WHITETHRESH}%' -black-threshold '${BLACKTHRESH}%' -deskew '40%'" $f &> /dev/null
+                PDFSTATUS="$?"
+            else
+                pdfsandwich -coo "-enhance -white-threshold '${WHITETHRESH}%' -black-threshold '${BLACKTHRESH}%' -deskew '40%'" $f
+                PDFSTATUS="$?"
+            fi
+        done
+    else
+        PDFSTATUS=0
+    fi
+
+    if [ "$PDFSTATUS" = 0 ]; then
+        
+        if [ -z $QUIET ]; then echo -e "${bold}>>>>>Moving processed PDFs to ${OUTPUT}...${NC}"; fi
+        if [ "$QUIET" = 1 ]; then
+            mv "$HOME"/pdfs/*.PDF "$OUTPUT" &> /dev/null
+        else
+            mv -v "$HOME"/pdfs/*.PDF "$OUTPUT"
+        fi
+
+        if [ -z $QUIET ]; then echo -e "${bold}>>>>>moving PDFs to completed directory on scanner...${NC}"; fi
+        if [ "$QUIET" = 1 ]; then
+            for z in $FILEES
+            do
+                mv ${INPUT}/${z} ${INPUT}/OCRdone &> /dev/null
+            done
+
+            if [ ! -z "$ORIGFILES" ]; then 
+                for z in $ORIGFILES
+                do
+                    mv ${INPUT}/${z} ${INPUT}/OCRdone &> /dev/null
+                done
+            fi
+        else
+            for z in $FILEES
+            do
+                mv -v ${INPUT}/${z} ${INPUT}/OCRdone
+            done
+
+            if [ ! -z "$ORIGFILES" ]; then 
+                for z in $ORIGFILES
+                do
+                    mv -v ${INPUT}/${z} ${INPUT}/OCRdone
+                done
+            fi
+        fi
+        if [ -z $QUIET ]; then echo -e "${bold}>>>>completed, please check for errors${NC}"; fi
+        exit 0
+    else
+        echo -e "${red}>>>>>>pdfsandwich encountered an error, aborting...${NC}"
+        exit 2
+    fi
+fi

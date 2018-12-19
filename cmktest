@@ -1,0 +1,72 @@
+#! /bin/bash
+
+#make things pretty colors later on
+WHITE='\033[0;37m'
+NC='\033[0m'
+
+# this sets up package.json i think.
+printf "${WHITE}### npm init -y${NC}\n"
+npm init -y
+
+# this installs mocha and chai locally
+printf "${WHITE}### npm install mocha chai${NC}\n"
+npm install --save mocha chai
+
+
+# binds test to mocha to use 'npm test ...'
+printf "${WHITE}### binding 'test' to 'mocha' in package.json...${NC}\n"
+sed -i 's/\("test": \)\(".*"\)/\1 "mocha"/' ./package.json
+
+# create folder for tests and test file
+printf "${WHITE}### building basic file/folder structure...${NC}\n"
+mkdir test
+touch test/tests.js
+
+# prompt for existing
+JSFILE="N"
+SOURCENAME="main"
+read -p 'Do you have an existing script(leave blank for "no")?(y/N)' JSFILE
+
+case $JSFILE in
+	[yY]* )
+		#if there is a file you'd like to source, do this
+		read -p "Please enter file location relative to current path ($(pwd)/" JSFILEPATH
+		SOURCENAME="$(echo ${JSFILEPATH} | sed 's/.[^\.]*$//')";;
+	* )
+		#if not, make a default file
+		mkdir ./src
+		touch ./src/main.js
+		JSFILEPATH='src/main.js';;
+
+esac
+
+FULLPATH="../${JSFILEPATH}"
+
+
+# add basic page/file load test to tests and some chai commands
+# source the file specified or src/main
+printf "${WHITE}### adding chai shortcuts and basic tests to tests.js${NC}\n"
+printf "const chai = require('chai')
+const assert = chai.assert
+const expect = chai.expect
+const should = chai.should()
+const ${SOURCENAME} = require('${FULLPATH}')
+
+describe('chai/mocha install', function () {
+  it('worked?', function () {
+    expect(true).to.equal(true)
+  })
+})" > ./test/tests.js
+
+# this sees if .gitignore exists, if not create it
+printf "${WHITE}### adding node_modules folder to .gitignore...${NC}\n"
+if [ ! -f .gitignore ]; then
+	touch .gitignore
+fi
+
+#append node_modules to .gitignore so that all the modules don't get synced with your github repo
+printf "node_modules/" >> .gitignore
+
+printf "${WHITE}### DONE!!!${NC}\n"
+
+npm test test/tests.js

@@ -1,0 +1,34 @@
+#! /bin/bash
+
+# echo current resolv.conf & ll of it
+report_resolv() {
+    ls --color -al /etc/ | grep --color=always "resolv.conf"
+    echo ""
+    cat /etc/resolv.conf
+}
+
+report_resolv
+
+# ask if they want to remove & replace
+read -p "$(echo -e '\e[1mDo you want to remove? (Y/n)... \e[0m')" ANSWER
+
+if [[ "$ANSWER" != "n" ]] && [[ "$ANSWER" != "N" ]]; then
+    sudo rm -v /etc/resolv.conf
+    if [ $? -eq 0 ]; then
+	echo -e "\e[32mFile removed, creating symlink...\e[0m"
+	sudo ln -s /run/resolvconf/resolv.conf /etc/resolv.conf
+	if [ $? -eq 0 ]; then
+	    echo -e "\e[32mSymlink created successfully\e[0m"
+	    report_resolv
+	    exit 0
+	else
+	    echo -e "\e[31mError! failed to create symlink\e[0m">&2
+	    exit 1
+	fi
+    else
+	echo -e "\e[31mError! failed to remove file!\e[0m">&2
+	exit 1
+    fi
+else
+    exit 0
+fi

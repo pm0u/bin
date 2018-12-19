@@ -1,0 +1,58 @@
+#! /bin/bash
+
+git init
+
+touch .gitignore .env readme.md app.js
+
+printf ".env
+.DS_Store
+node_modules" > .gitignore
+
+npm init -y
+
+npm install dotenv express body-parser morgan --save
+
+printf "NODE_ENV=development
+PORT=3000" > .env
+
+printf "const env = require('dotenv').config()
+const express = require('express')
+const app = express()
+const port = process.env.PORT || 3000
+const morgan = require('morgan')
+const bodyParser = require('body-parser')
+
+app.disable('x-powered-by')
+app.use(morgan('dev'))
+app.use(bodyParser.json())
+
+app.get('/', (req, res, next) => {
+	res.send({ message: 'Pong!'})
+})
+
+app.use((err,req,res,next) => {
+	const status = err.status || 500
+	res.status(status).send({error: err})
+})
+
+app.use((req,res,next) => {
+	res.status(404).json({ message: 'Not Found!' })
+})
+
+const listener = () => console.log(\`listening on port \${port}\`)
+app.listen(port,listener)
+
+module.exports = app" > app.js
+
+termite --hold -e 'zsh -c "sleep 5 && http get localhost:3000 && http get localhost:3000/404me"' &
+ 
+nodemon app.js
+
+#perl -0777 -i -pe 's/("scripts": \{\n)(\s*"test": ".*"\n)/\1    "start": "node app.js",\n\2/' package.json
+#git add -A
+#git commit -m "deploy to heroku"
+#read -p "name your app " HEROKU
+#heroku create $HEROKU
+#git push heroku master
+#http get "${HEROKU}.herokuapp.com"
+#http get "${HEROKU}.herokuapp.com/404me"
