@@ -25,8 +25,10 @@ SEC=$(echo "$ELWIFI" | awk '{ print $8 }' | sed 's/\x1B\[[0-9;]*[JKmsu]//g')
 if [[ -n $SEC ]]
 then
     #echo "needs password"
-    read -p "Enter WPA Password.. " PASSWD
-    nmcli dev wifi con \'"$SSID"\' password \'"$PASSWD"\' name \'"$SSID"\'
+    #read -p "Enter WPA Password.. " PASSWD
+    #nmcli dev wifi con "$SSID" password \'"$PASSWD"\' name \'"$SSID"\'
+    # lets try ask instead...
+    nmcli dev wifi con "$SSID" --ask 
 else
     #echo "no password"
     nmcli dev wifi con "$SSID" name "$SSID"
